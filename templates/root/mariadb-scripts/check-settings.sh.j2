@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Check settings on both machines
+# Run on: db1
 
 set -x
 
@@ -16,19 +17,19 @@ replication_user_password={{ mariadb_replication_scripts_replication_user_passwo
 
 
 # Show variables on this machine
-mysql --raw --skip-column-names --silent -e "
-    SHOW VARIABLES LIKE 'bind_address';
-    SHOW VARIABLES LIKE 'server_id';
-    SHOW VARIABLES LIKE 'binlog_format';
-    SHOW VARIABLES LIKE 'log_bin%';
-    SHOW MASTER STATUS;
-    SHOW VARIABLES LIKE 'slave%';"
+mysql --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'bind_address';"
+mysql --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'server_id';"
+mysql --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'binlog_format';"
+mysql --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'log_bin%';"
+mysql --raw --skip-column-names --silent -e "SHOW MASTER STATUS;"
+mysql --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'slave%';"
+mysql --raw --skip-column-names --silent -e "SELECT @@global.read_only;"
 
 # Show variables on other machine
-mysql -u root -p$slave_password -h $slave_ip --raw --skip-column-names --silent -e "
-    SHOW VARIABLES LIKE 'bind_address';
-    SHOW VARIABLES LIKE 'server_id';
-    SHOW VARIABLES LIKE 'binlog_format';
-    SHOW VARIABLES LIKE 'log_bin%';
-    SHOW MASTER STATUS;
-    SHOW VARIABLES LIKE 'slave%';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'bind_address';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'server_id';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'binlog_format';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'log_bin%';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW MASTER STATUS;"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW VARIABLES LIKE 'slave%';"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SELECT @@global.read_only;"

@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Make the old master a master again
+# Run on: db1
 # Doc: https://mariadb.com/kb/en/changing-a-slave-to-become-the-master/
 
 set -e -x
@@ -27,8 +28,9 @@ SHOW MASTER STATUS;
 SELECT @@global.gtid_binlog_pos;
 SET @@global.read_only=0;"
 
-# Lock tables on current master
-mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "FLUSH TABLES WITH READ LOCK"
+# Make current master read-only
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SET GLOBAL read_only = 1;" mysql
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SELECT @@global.read_only;" mysql
 
 # Get binlog position for current master
 mysql_log_bin_file=$(mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW MASTER STATUS" | awk '{print $1}')
@@ -42,6 +44,10 @@ mysql --raw --skip-column-names --silent -e "SHOW DATABASES" | egrep -v 'mysql|i
     mysql --raw --skip-column-names --silent -e "CREATE DATABASE $database"
     mysqldump -u root -p$slave_root_password -h $slave_ip $database | mysql $database
 done
+
+# Disable read-only on current master
+mysql --raw --skip-column-names --silent -e "SET GLOBAL read_only = 0;" mysql
+mysql --raw --skip-column-names --silent -e "SELECT @@global.read_only;" mysql
 
 # Make this machine a slave to the current master
 mysql --raw --skip-column-names --silent -e "set @@global.read_only=1;
