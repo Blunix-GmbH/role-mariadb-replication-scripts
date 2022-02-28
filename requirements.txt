@@ -1,0 +1,5 @@
+ansible
+#molecule==2.20.2
+molecule
+yamllint
+molecule-vagrant

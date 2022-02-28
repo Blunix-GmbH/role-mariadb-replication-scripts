@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# Make the old master a master again
+# Doc: https://mariadb.com/kb/en/changing-a-slave-to-become-the-master/
+
+set -e -x
+
+
+# Variables
+master_ip={{ mariadb_replication_scripts_master_ip }}
+master_root_password={{ mariadb_replication_scripts_master_root_password }}
+slave_ip={{ mariadb_replication_scripts_slave_ip }}
+slave_root_password={{ mariadb_replication_scripts_slave_root_password }}
+replication_user_name={{ mariadb_replication_scripts_replication_user_name }}
+replication_user_password={{ mariadb_replication_scripts_replication_user_password }}
+
+
+
+# Make sure mysql servers are running
+service mysql start
+mysql -u root -p$slave_root_password -h $slave_ip -e "SHOW DATABASES;"
+
+# Prepare this machine to be a master
+mysql --raw --skip-column-names --silent -e "STOP ALL SLAVES;
+RESET SLAVE ALL;
+SHOW MASTER STATUS;
+SELECT @@global.gtid_binlog_pos;
+SET @@global.read_only=0;"
+
+# Lock tables on current master
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "FLUSH TABLES WITH READ LOCK"
+
+# Get binlog position for current master
+mysql_log_bin_file=$(mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW MASTER STATUS" | awk '{print $1}')
+mysql_log_bin_position=$(mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW MASTER STATUS" | awk '{print $2}')
+echo $mysql_log_bin_file
+echo $mysql_log_bin_position
+
+# Create and copy databases from current master
+mysql --raw --skip-column-names --silent -e "SHOW DATABASES" | egrep -v 'mysql|information_schema|performance_schema' | while read database; do
+    mysql --raw --skip-column-names --silent -e "DROP DATABASE IF EXISTS $database"
+    mysql --raw --skip-column-names --silent -e "CREATE DATABASE $database"
+    mysqldump -u root -p$slave_root_password -h $slave_ip $database | mysql $database
+done
+
+# Make this machine a slave to the current master
+mysql --raw --skip-column-names --silent -e "set @@global.read_only=1;
+STOP ALL SLAVES;
+RESET MASTER;
+RESET SLAVE ALL;
+CHANGE MASTER TO
+  MASTER_HOST='$slave_ip',
+  MASTER_USER='$replication_user_name',
+  MASTER_PASSWORD='$replication_user_password',
+  MASTER_PORT=3306,
+  MASTER_LOG_FILE='$mysql_log_bin_file',
+  MASTER_LOG_POS=$mysql_log_bin_position,
+  MASTER_CONNECT_RETRY=10;
+START SLAVE;"
+
+# Promote this machine to master
+mysql --raw --skip-column-names --silent -e "STOP ALL SLAVES;
+RESET SLAVE ALL;
+SHOW MASTER STATUS;
+SELECT @@global.gtid_binlog_pos;
+SET @@global.read_only=0;"
+
+# Shutdown the now ex-master
+mysql -u root -p$slave_root_password -h $slave_ip -e "SHUTDOWN;"
+

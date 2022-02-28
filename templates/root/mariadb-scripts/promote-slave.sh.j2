@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# Promote the slave to be the new master
+# Doc: https://mariadb.com/kb/en/changing-a-slave-to-become-the-master/
+
+set -x
+
+
+# Variables
+master_ip={{ mariadb_replication_scripts_master_ip }}
+master_root_password={{ mariadb_replication_scripts_master_root_password }}
+slave_ip={{ mariadb_replication_scripts_slave_ip }}
+slave_root_password={{ mariadb_replication_scripts_slave_root_password }}
+replication_user_name={{ mariadb_replication_scripts_replication_user_name }}
+replication_user_password={{ mariadb_replication_scripts_replication_user_password }}
+
+
+
+# Attempt to stop the old master
+timeout 3 mysql -u root -p$master_root_password -h $master_ip -e "SHUTDOWN;"
+
+
+# Make this slave a master
+mysql --raw --skip-column-names --silent -e "STOP ALL SLAVES;"
+mysql --raw --skip-column-names --silent -e "RESET SLAVE ALL;"
+mysql --raw --skip-column-names --silent -e "SHOW MASTER STATUS;"
+mysql --raw --skip-column-names --silent -e "SELECT @@global.gtid_binlog_pos;"
+mysql --raw --skip-column-names --silent -e "SET @@global.read_only=0;"
+

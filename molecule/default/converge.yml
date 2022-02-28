@@ -1,0 +1,94 @@
+- name: Converge
+  become: True
+  hosts: bullseye1
+  roles:
+    - role: blunix_role-mariadb_11.0.0
+  vars:
+    # role-mariadb
+    mariadb_version: 10.5
+    mariadb_root_password: molecule
+    mariadb_conf_bind_address: 10.99.0.5
+    mariadb_databases:
+      - name: wordpress
+        state: present
+    mariadb_users:
+      - name: root
+        state: present
+        host: "10.99.0.6"
+        password: molecule
+        priv: '*.*:ALL'
+      - name: replication_user
+        state: present
+        host: "10.99.0.6"
+        password: replicationpassword
+        priv: '*.*:REPLICATION SLAVE'
+      - name: frank
+        state: present
+        host: localhost
+        password: secretpassword
+        priv: 'wordpress.*:ALL,GRANT'
+    # Templates /etc/mysql/mariadb.conf.d/99-custom.conf
+    mariadb_conf_custom_settings:
+      mysqld:
+        log_bin: /var/log/mysql/mysql-bin.log
+        expire_logs_days: 10
+        max_binlog_size: 1000M
+        server_id: "1"
+        log-basename: bullseye1
+        binlog-format: mixed
+
+
+- name: Converge
+  become: True
+  hosts: bullseye2
+  roles:
+    - role: blunix_role-mariadb_11.0.0
+  vars:
+    # role-mariadb
+    mariadb_version: 10.5
+    mariadb_root_password: molecule
+    mariadb_conf_bind_address: 10.99.0.6
+    mariadb_databases:
+      - name: wordpress
+        state: present
+    mariadb_users:
+      - name: root
+        state: present
+        host: "10.99.0.5"
+        password: molecule
+        priv: '*.*:ALL'
+      - name: replication_user
+        state: present
+        host: "10.99.0.5"
+        password: replicationpassword
+        priv: '*.*:REPLICATION SLAVE'
+      - name: frank
+        state: present
+        host: localhost
+        password: secretpassword
+        priv: 'wordpress.*:ALL,GRANT'
+   # Templates /etc/mysql/mariadb.conf.d/99-custom.conf
+    mariadb_conf_custom_settings:
+      mysqld:
+        # replication related
+        log_bin: /var/log/mysql/mysql-bin.log
+        expire_logs_days: 10
+        max_binlog_size: 1000M
+        server_id: "2"
+        log-basename: bullseye2
+        binlog-format: mixed
+
+
+- name: Converge
+  become: True
+  hosts: all
+  roles:
+    - role: role-mariadb-replication-scripts
+  vars:
+    mariadb_replication_scripts_master_ip: 10.99.0.5
+    mariadb_replication_scripts_master_root_password: molecule
+    mariadb_replication_scripts_slave_ip: 10.99.0.6
+    mariadb_replication_scripts_slave_root_password: molecule
+    mariadb_replication_scripts_replication_user_name: replication_user
+    mariadb_replication_scripts_replication_user_password: replicationpassword
+

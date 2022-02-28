@@ -1,0 +1,5 @@
+- src: https://git.blunix.com/ansible-roles/role-mariadb.git
+  name: blunix_role-mariadb_11.0.0
+  scm: git
+  version: 11.0.0
+

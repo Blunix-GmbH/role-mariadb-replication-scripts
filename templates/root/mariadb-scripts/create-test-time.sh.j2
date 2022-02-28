@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Write some test data
+
+set -e -x
+
+
+# Variables
+master_ip={{ mariadb_replication_scripts_master_ip }}
+master_root_password={{ mariadb_replication_scripts_master_root_password }}
+slave_ip={{ mariadb_replication_scripts_slave_ip }}
+slave_root_password={{ mariadb_replication_scripts_slave_root_password }}
+replication_user_name={{ mariadb_replication_scripts_replication_user_name }}
+replication_user_password={{ mariadb_replication_scripts_replication_user_password }}
+
+
+# Write test data
+mysql --raw --skip-column-names --silent -e "
+    CREATE DATABASE IF NOT EXISTS test;
+    USE test;
+    CREATE TABLE IF NOT EXISTS test ( CurrentTime datetime );
+    INSERT INTO test values(now());"
+
+# Show test data on both servers
+mysql --raw --skip-column-names --silent -e "SELECT * FROM test;" test
+sleep 0.5
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SELECT * FROM test;" test
+

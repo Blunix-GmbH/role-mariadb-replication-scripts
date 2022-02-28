@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# Check settings on both machines
+
+set -x
+
+
+# Variables
+master_ip={{ mariadb_replication_scripts_master_ip }}
+master_root_password={{ mariadb_replication_scripts_master_root_password }}
+slave_ip={{ mariadb_replication_scripts_slave_ip }}
+slave_root_password={{ mariadb_replication_scripts_slave_root_password }}
+replication_user_name={{ mariadb_replication_scripts_replication_user_name }}
+replication_user_password={{ mariadb_replication_scripts_replication_user_password }}
+
+
+
+# Show variables on this machine
+mysql --raw --skip-column-names --silent -e "
+    SHOW VARIABLES LIKE 'bind_address';
+    SHOW VARIABLES LIKE 'server_id';
+    SHOW VARIABLES LIKE 'binlog_format';
+    SHOW VARIABLES LIKE 'log_bin%';
+    SHOW MASTER STATUS;
+    SHOW VARIABLES LIKE 'slave%';"
+
+# Show variables on other machine
+mysql -u root -p$slave_password -h $slave_ip --raw --skip-column-names --silent -e "
+    SHOW VARIABLES LIKE 'bind_address';
+    SHOW VARIABLES LIKE 'server_id';
+    SHOW VARIABLES LIKE 'binlog_format';
+    SHOW VARIABLES LIKE 'log_bin%';
+    SHOW MASTER STATUS;
+    SHOW VARIABLES LIKE 'slave%';"

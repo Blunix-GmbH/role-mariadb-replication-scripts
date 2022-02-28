@@ -1,0 +1,22 @@
+galaxy_info:
+
+  role_name: mariadb_replication_scripts
+  namespace: blunix
+  description: installs and configures mariadb replication using BASH scripts
+  author: Peter Thurner
+  company: Blunix GmbH
+  license: Apache2
+  min_ansible_version: 2.12
+
+  platforms:
+  - name: Debian
+    versions:
+    - bullseye
+
+  galaxy_tags:
+  - blunix
+  - mariadb
+  - mysql
+  - replication
+
+dependencies: []

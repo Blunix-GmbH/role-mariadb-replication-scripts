@@ -1,0 +1,26 @@
+#- create relevant config files
+#- create replication user and grants
+
+- name: create replication scripts directory
+  file:
+    state: directory
+    path: /root/mariadb-scripts/
+    owner: root
+    group: root
+    mode: 0700
+
+- name: setup replication scripts
+  template:
+    src: "templates/root/mariadb-scripts/{{ mariadb_replication_script_filename }}.j2"
+    dest: "/root/mariadb-scripts/{{ mariadb_replication_script_filename }}"
+    owner: root
+    group: root
+    mode: 0700
+  with_items:
+    - check-settings.sh
+    - create-test-time.sh
+    - failback.sh
+    - promote-slave.sh
+    - setup-mastar-slave-replication.sh
+  loop_control:
+    loop_var: mariadb_replication_script_filename

@@ -1,0 +1,59 @@
+dependency:
+  name: galaxy
+
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+
+#lint:
+#  name: yamllint
+#  options:
+#    config-data:
+#      line-length: disable
+
+platforms:
+  - name: bullseye1
+    box: debian/bullseye64
+    memory: 4192
+    interfaces:
+      - network_name: private_network
+        ip: 10.99.0.5
+  - name: bullseye2
+    box: debian/bullseye64
+    memory: 4192
+    interfaces:
+      - network_name: private_network
+        ip: 10.99.0.6
+
+provisioner:
+  name: ansible
+  log: yes
+  connection_options:
+    ansible_become: yes
+  lint:
+    name: ansible-lint
+    options:
+      x:
+        - ANSIBLE0002
+  inventory:
+    group_vars:
+      all:
+        ansible_python_interpreter: "/usr/bin/python3"
+  config_options:
+    defaults:
+      ansible_managed: "This file is managed by Ansible, edit it in git!"
+      stdout_callback: yaml
+      retry_files_enabled: False
+    diff:
+      always: True
+
+scenario:
+  name: default
+
+verifier:
+  name: testinfra
+  lint:
+    name: flake8
+    options:
+      ignore: 'E501'

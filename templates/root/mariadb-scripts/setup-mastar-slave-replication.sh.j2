@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# Attach the slave to the master
+# Doc: https://mariadb.com/kb/en/setting-up-replication/
+
+set -e -x
+
+
+# Variables
+master_ip={{ mariadb_replication_scripts_master_ip }}
+master_root_password={{ mariadb_replication_scripts_master_root_password }}
+slave_ip={{ mariadb_replication_scripts_slave_ip }}
+slave_root_password={{ mariadb_replication_scripts_slave_root_password }}
+replication_user_name={{ mariadb_replication_scripts_replication_user_name }}
+replication_user_password={{ mariadb_replication_scripts_replication_user_password }}
+
+
+
+# Make sure mysql servers are running
+mysql --raw --skip-column-names --silent -e "SHOW DATABASES;"
+mysql -u root -p$slave_root_password -h $slave_ip --raw --skip-column-names --silent -e "SHOW DATABASES;"
+
+# Lock tables on master
+mysql --raw --skip-column-names --silent -e "FLUSH TABLES WITH READ LOCK"
+
+# Get current binlog position
+mysql_log_bin_file=$(mysql --raw --skip-column-names --silent -e "SHOW MASTER STATUS" | awk '{print $1}')
+mysql_log_bin_position=$(mysql --raw --skip-column-names --silent -e "SHOW MASTER STATUS" | awk '{print $2}')
+echo $mysql_log_bin_file
+echo $mysql_log_bin_position
+
+# Create and copy databases
+mysql --raw --skip-column-names --silent -e "SHOW DATABASES" | egrep -v 'mysql|information_schema|performance_schema' | while read database; do
+    mysql -u root -p$slave_root_password -h $slave_ip -e "DROP DATABASE IF EXISTS $database"
+    mysql -u root -p$slave_root_password -h $slave_ip -e "CREATE DATABASE $database"
+    mysqldump $database | mysql -u root -p$slave_root_password -h $slave_ip $database
+done
+
+# Initiate master-slave replication
+mysql --raw --skip-column-names --silent -e "UNLOCK TABLES"
+mysql -u root -p$slave_root_password -h $slave_ip -e "CHANGE MASTER TO
+  MASTER_HOST='$master_ip',
+  MASTER_USER='$replication_user_name',
+  MASTER_PASSWORD='$replication_user_password',
+  MASTER_PORT=3306,
+  MASTER_LOG_FILE='$mysql_log_bin_file',
+  MASTER_LOG_POS=$mysql_log_bin_position,
+  MASTER_CONNECT_RETRY=10;"
+
+# Start slave
+mysql -u root -p$slave_root_password -h $slave_ip -e "START SLAVE;"
+
+# Show slave status
+mysql -u root -p$slave_root_password -h $slave_ip -e "SHOW SLAVE STATUS;"
+mysql -u root -p$slave_root_password -h $slave_ip -e "SHOW VARIABLES LIKE 'slave%';"
+
