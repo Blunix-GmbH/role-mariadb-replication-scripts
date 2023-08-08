@@ -1,6 +1,3 @@
-#- create relevant config files
-#- create replication user and grants
-
 - name: create replication scripts directory
   file:
     state: directory
@@ -24,3 +21,46 @@
     - setup-mastar-slave-replication.sh
   loop_control:
     loop_var: mariadb_replication_script_filename
+
+
+
+- name: apt install git
+  apt:
+    name:
+      - git
+      - python3-git
+
+- name: git clone github.com/mattiabasone/tuning-primer
+  git:
+    repo: https://github.com/mattiabasone/tuning-primer.git
+    dest: /root/mariadb-scripts/tuning-primer
+    clone: True
+    update: True
+
+- name: git clone github.com/major/MySQLTuner-perl
+  git:
+    repo: https://github.com/major/MySQLTuner-perl.git
+    dest: /root/mariadb-scripts/MySQLTuner-perl
+    clone: True
+    update: True
+
+
+
+# https://mariadb.com/kb/en/configuring-linux-for-mariadb/
+# TODO make permanent https://www.percona.com/blog/linux-os-tuning-for-mysql-database-performance/
+- name: use mq-deadline disk scheduler
+  shell: "echo mq-deadline > /sys/block/{{ mariadb_block_device }}/queue/scheduler"
+  args:
+    executable: /bin/bash
+  with_items: "{{ mariadb_block_devices }}"
+  loop_control:
+    loop_var: mariadb_block_device
+
+- name: define higher limits for mysql user
+  blockinfile:
+    path: /etc/security/limits.conf
+    block: |
+      mysql soft nofile 65535
+      mysql hard nofile 65535
+      mysql soft core unlimited
+      mysql hard core unlimited
